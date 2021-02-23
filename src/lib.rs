@@ -1,26 +1,30 @@
 //! A Crate for Providing Some Implementation of `Top K` Algorithm
 //! 
 
-pub trait TopK {
-    type Item: std::cmp::Eq + std::cmp::Ord;
-    /// Crate an instance implemented `TopK`
-    fn new() -> Self;
+use std::cmp::{Eq, Ord};
+mod quick_select;
 
-    fn set_k(&mut self, k: usize) -> Result<(), TopKErr>;
+pub trait TopK<I>
+    where I: Eq + Ord + Clone + Copy
+{
+    /// Crate an instance implemented `TopK`
+    fn new(k: usize) -> Self;
 
     /// Add an item
-    fn add_item(&mut self, item: Self::Item) -> Result<(), TopKErr>;
+    fn add_item(&mut self, item: I);
 
     /// Add some items
-    fn add_items<I: IntoIterator<Item = Self::Item>>(&mut self, items: I) -> Result<(), TopKErr>;
+    fn add_items<IS: IntoIterator<Item = I>>(&mut self, items: IS) {
+        for item in items {
+            self.add_item(item);
+        }
+    }
 
     /// Found the top k of given items
-    fn top_k(&self) -> Result<Vec<Self::Item>, TopKErr>;
+    fn top_k(&mut self) -> Result<Vec<I>, TopKErr>;
 }
 
-
+#[derive(Debug)]
 pub enum TopKErr {
-    OverFlow,
-    SetKErr,
-    Empty
+    ItemsEmpty
 }

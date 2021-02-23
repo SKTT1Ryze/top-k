@@ -20,6 +20,9 @@ pub trait TopK<I>
         }
     }
 
+    /// Reset the `TopK`
+    fn reset(&mut self);
+
     /// Found the top k of given items
     fn top_k(&mut self) -> Result<Vec<I>, TopKErr>;
 }

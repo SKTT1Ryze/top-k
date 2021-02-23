@@ -24,6 +24,11 @@ impl<I: Eq + Ord + Clone + Copy> TopK<I> for QuickSelect<I> {
         self.items.push(item);
     }
 
+    /// Remove all items
+    fn reset(&mut self) {
+        self.items.clear();
+    }
+
     /// Use quick selection algorithm to find the top k values.  
     /// Return `TopKErr::ItemsEmpty` if `self.items` is empty.  
     /// Return entire `self.items` if `self.items.len()` < `self.k`.  
@@ -99,14 +104,19 @@ fn simple_test_qucik_selection() -> Result<(), TopKErr> {
     qs.add_items(vec![1, 2, 4, 5, 7, 0, 9, 3]);
     let res = qs.top_k()?;
     if res != vec![7, 9] && res != vec![9, 7] {
-        panic!("test qucik selection top k failed, res: {:?}", res);
+        panic!("test qucik selection top k failed, res: {:?}.", res);
+    }
+    qs.reset();
+    qs.add_items(vec![1, 2, 4, 5, 9, 0, 9, 10]);
+    let res = qs.top_k()?;
+    if res != vec![10, 9, 9] && res != vec![9, 10, 9] && res != vec![9, 9, 10] {
+        panic!("test qucik selection top k failed, res: {:?}.", res);
     }
     Ok(())
 }
 
 #[test]
 fn large_test_quick_selection() -> Result<(), TopKErr> {
-    use rand::Rng;
     let mut qs = QuickSelect::<usize>::new(50);
     let mut data = Vec::new();
     let mut random = rand::thread_rng();
@@ -118,6 +128,55 @@ fn large_test_quick_selection() -> Result<(), TopKErr> {
     for item in qs.top_k()? {
         if item < data[950] {
             panic!("item {} in result is not the top k.", item)
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn impl_item_test() -> Result<(), TopKErr> {
+    use std::cmp::{PartialEq, PartialOrd, Ordering};
+    #[derive(Clone, Copy, Debug)]
+    struct TestItem (usize);
+    impl PartialEq<TestItem> for TestItem {
+        fn eq(&self, other: &TestItem) -> bool {
+            self.0 == other.0
+        }
+    }
+    impl Eq for TestItem {}
+
+    impl PartialOrd for TestItem {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.0.partial_cmp(&other.0)
+        }
+    }
+
+    impl Ord for TestItem {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.0.cmp(&other.0)
+        }
+    }
+
+    impl TestItem {
+        fn new(value: usize) -> Self {
+            Self (value)
+        }
+    }
+
+    let mut qs = QuickSelect::<TestItem>::new(2);
+    let mut data = Vec::new();
+    let mut rand = rand::thread_rng();
+    for _ in 0..20 {
+        data.push(TestItem::new(rand.gen_range(0..20)));
+    }
+    for d in &data {
+        qs.add_item(d.clone());
+    }
+    let res = qs.top_k()?;
+    data.sort();
+    for item in res {
+        if item < data[18] {
+            panic!("item {:?} in result is not the top k.", item)
         }
     }
     Ok(())

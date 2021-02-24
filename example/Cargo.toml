@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 top-k = { path = ".." }
+futures = "0.3.0"
+async-std = "1"

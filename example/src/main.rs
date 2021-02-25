@@ -33,8 +33,7 @@ use async_std::io;
 use async_std::fs::File;
 use async_std::prelude::*;
 use async_std::path::Path;
-use std::collections::HashMap;
-use std::cmp::{PartialEq, PartialOrd, Ordering};
+
 use top_k::{TopK, TopKErr};  
 
 pub async fn read_and_write_file<'url, P, PS>(source: P, destinations: PS, buffer: &'url mut [u8]) -> io::Result<()>
@@ -68,6 +67,7 @@ pub async fn read_and_write_file<'url, P, PS>(source: P, destinations: PS, buffe
 }
 
 fn main() -> io::Result<()> {
+    let timer = std::time::Instant::now();
     // 1 M = 1 * 2 ^ 20 bytes = (1 << 20) u8
     let mut buffer = [0u8; 1 << 20];
     let mut files = Vec::new();
@@ -78,9 +78,11 @@ fn main() -> io::Result<()> {
     async_std::task::block_on(async {
         read_and_write_file(String::from("urldata.csv"), files.clone(), &mut buffer).await.unwrap();
     });
+    let split_file_time = timer.elapsed().as_millis();
     // 分割完， 将 1 M 大小的数组 drop 掉
     drop(buffer);
     
+    use std::cmp::Ordering;
     #[derive(Clone, Copy, Debug)]
     struct UrlData<'url> (
         // (url, 计数)
@@ -118,6 +120,7 @@ fn main() -> io::Result<()> {
     }
 
     use std::io::Read;
+    use std::collections::HashMap;
     let mut results = Vec::new();
     for f in files {
         let mut hash: HashMap<&str, usize> = HashMap::new();
@@ -164,6 +167,8 @@ fn main() -> io::Result<()> {
     let mut final_qs = top_k::quick_select::QuickSelect::new(100);
     final_qs.add_items(urls);
     let final_res = final_qs.top_k().unwrap();
+    let compute_time = timer.elapsed().as_millis() - split_file_time;
     println!("{:?}", final_res);
+    println!("handle files use {} milliseconds, compute use {} milliseconds", split_file_time, compute_time);
     Ok(())
 }

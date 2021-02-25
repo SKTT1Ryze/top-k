@@ -39,7 +39,14 @@
     - todo()!
 
 + 性能测试
-    - todo()!
+    - CPU: Intel Core i7-8750H @ 12x 4.1GHz
+    - GPU: Intel Corporation UHD Graphics 630
+    - OS: Manjaro 20.2.1 Nibia
+    - Kernel: x86_64 Linux 5.10.15-1-MANJARO
+    - 文件处理时间（拆分大文件）: 182 milliseconds
+    - 计算时间（Top K 计算）: 16700 milliseconds
 
 
-
+## 优化
++ 更好的数据处理框架
++ 使用分布式系统进行各个小文件的 Top K 计算

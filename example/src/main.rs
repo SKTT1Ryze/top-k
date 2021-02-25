@@ -33,8 +33,11 @@ use async_std::io;
 use async_std::fs::File;
 use async_std::prelude::*;
 use async_std::path::Path;
+use std::collections::HashMap;
+use std::cmp::{PartialEq, PartialOrd, Ordering};
+use top_k::{TopK, TopKErr};  
 
-pub async fn read_and_write_file<'a, P, PS>(source: P, destinations: PS, buffer: &'a mut [u8]) -> io::Result<()>
+pub async fn read_and_write_file<'url, P, PS>(source: P, destinations: PS, buffer: &'url mut [u8]) -> io::Result<()>
     where
         P: AsRef<Path>,
         PS: IntoIterator<Item = P> + Clone
@@ -71,8 +74,93 @@ fn main() -> io::Result<()> {
     for i in 0..100 {
         files.push(format!("child_{}.csv", i));
     }
+    // 将 100 M 大文件分割为 100 个小文件
     async_std::task::block_on(async {
-        read_and_write_file(String::from("urldata.csv"), files, &mut buffer).await.unwrap();
+        read_and_write_file(String::from("urldata.csv"), files.clone(), &mut buffer).await.unwrap();
     });
+    // 分割完， 将 1 M 大小的数组 drop 掉
+    drop(buffer);
+    
+    // (url, 计数)
+    #[derive(Clone, Copy, Debug)]
+    struct UrlData<'url> (&'url str, usize);
+    impl<'url> UrlData<'url> {
+        pub fn new(url: &'url str, frequency: usize) -> Self {
+            UrlData (
+                url,
+                frequency
+            )
+        }
+        pub fn url(&self) -> &'url str {
+            self.0
+        }
+        pub fn frequency(&self) -> usize {
+            self.1
+        }
+    }
+    impl<'url> PartialEq<UrlData<'url>> for UrlData<'url> {
+        fn eq(&self, other: &UrlData) -> bool {
+            self.1 == other.1
+        }
+    }
+    impl<'url> Eq for UrlData<'url> {}
+    impl<'url> PartialOrd for UrlData<'url> {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            self.1.partial_cmp(&other.1)
+        }
+    }
+    impl<'url> Ord for UrlData<'url> {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.1.cmp(&other.1)
+        }
+    }
+    use std::io::Read;
+    let mut results = Vec::new();
+    // 分别读取 100 个小文件
+    for f in files {
+        let mut hash: HashMap<&str, usize> = HashMap::new();
+        let mut url_f = std::fs::File::open(f)?;
+        // 创建 buffer 读取数据，由于已经分割过大文件，因此 buffer 占用的内存不会大于 1 M
+        let mut contents = String::new();
+        // 将数据读进内存
+        url_f.read_to_string(&mut contents).unwrap();
+        for line in contents.lines() {
+            // 如果哈希表里面存在相应的 url,则将计数加一，否则插入一行记录
+            if let Some(key) = hash.get_mut(line) {
+                *key += 1;
+            } else {
+                hash.insert(line, 1usize);
+            }
+        }
+        let url_datas: Vec<UrlData> = hash.into_iter().map(|u| {
+            UrlData::new(u.0, u.1)
+        }).collect();
+        // 创建快速选择算法用于 Top K 计算
+        let mut qs = top_k::quick_select::QuickSelect::new(100);
+        // 往快速选择算法里面填充数据
+        qs.add_items(url_datas);
+        // 计算该小文件的 Top 100
+        match qs.top_k() {
+            Ok(res) => {
+                // 将结果放进 `results` 里面保存
+                for r in res {
+                    results.push(
+                        (String::from(r.url()), r.frequency())
+                    );
+                }        
+            }
+            Err(TopKErr::ItemsEmpty) => {}, // do nothing
+        };
+    }
+    let mut urls = Vec::new();
+    for res in &results {
+        urls.push(
+            UrlData::new(res.0.as_str(), res.1)
+        )
+    }
+    let mut final_qs = top_k::quick_select::QuickSelect::new(100);
+    final_qs.add_items(urls);
+    let final_res = final_qs.top_k().unwrap();
+    println!("{:?}", final_res);
     Ok(())
 }

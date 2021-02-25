@@ -2,7 +2,7 @@
 //! 
 
 use std::cmp::{Eq, Ord};
-mod quick_select;
+pub mod quick_select;
 
 pub trait TopK<I>
     where I: Eq + Ord + Clone + Copy

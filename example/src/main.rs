@@ -34,7 +34,7 @@ use async_std::fs::File;
 use async_std::prelude::*;
 use async_std::path::Path;
 
-use top_k::{TopK, TopKErr};  
+use top_k::{TopK, TopKErr};
 
 pub async fn read_and_write_file<'url, P, PS>(source: P, destinations: PS, buffer: &'url mut [u8]) -> io::Result<()>
     where

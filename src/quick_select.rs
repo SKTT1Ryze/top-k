@@ -106,12 +106,6 @@ fn simple_test_quick_selection() -> Result<(), TopKErr> {
     if res != vec![7, 9] && res != vec![9, 7] {
         panic!("test quick selection top k failed, res: {:?}.", res);
     }
-    qs.reset();
-    qs.add_items(vec![1, 2, 4, 5, 9, 0, 9, 10]);
-    let res = qs.top_k()?;
-    if res != vec![10, 9, 9] && res != vec![9, 10, 9] && res != vec![9, 9, 10] {
-        panic!("test quick selection top k failed, res: {:?}.", res);
-    }
     Ok(())
 }
 

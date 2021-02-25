@@ -39,6 +39,7 @@
     - todo()!
 
 + 性能测试
+    - 运行：`cargo run`
     - CPU: Intel Core i7-8750H @ 12x 4.1GHz
     - GPU: Intel Corporation UHD Graphics 630
     - OS: Manjaro 20.2.1 Nibia

@@ -16,7 +16,7 @@
 //! 
 //! URL 数据来源及处理： 
 //! + 由于硬盘空间有限，存不下 100 GB 的数据，因此使用 100 M 的 `urldata.csv`, 来源于 `kaggle` 的数据集：https://www.kaggle.com/teseract/urldataset
-//! + 关于内存限制，这里只使用 100 M / 100 = 1 M 大小的数组 `buffer`
+//! + 关于内存限制，这里只创建一个 100 M / 100 = 1 M 大小的数组 `buffer`，用于读取数据
 //! + 将 `urldata.csv` 文件分割为 100 个小文件，命名方式为 `child_0.csv` ~ `child_99.csv` 
 //! 
 //! 
@@ -51,7 +51,6 @@ pub async fn read_and_write_file<'a, P, PS>(source: P, destinations: PS, buffer:
             // 2. buffer 长度为 0
             // 无论是哪种情况，都将返回
             if bytes == 0 {
-                println!("the end of file");
                 return Ok(());
             }
             // 写数据到目标文件
@@ -72,7 +71,6 @@ fn main() -> io::Result<()> {
     for i in 0..100 {
         files.push(format!("child_{}.csv", i));
     }
-    println!("{:?}", files);
     async_std::task::block_on(async {
         read_and_write_file(String::from("urldata.csv"), files, &mut buffer).await.unwrap();
     });

@@ -9,13 +9,13 @@
 //! + 以 `Crate` 的形式设计 Top K 计算模块，提高代码的可复用度
 //! + 提供 `TopK` trait，方便使用各种算法实现 Top K 运算
 //! + 使用 Rust 的异步机制进行文件的拆分
-//!     - read_one_line().await?
-//!     - write_one_line().await?
-//!     - 注意数据的同步与互斥,比如读第 n 行，就只能写 0~n-1 行，读完一定的行数后阻塞等待写完，然后清空 buffer 重复读写步骤
-//! + 拆分完成之后每次读一个文件数据进行 Top 100 计算，计算完毕之后释放相应的内存，然后读取下一个文件，最终在 100*100 个记录（不会超过 1 GB 内存）中再进行 Top 100 计算
+//!     - file.read(&mut buffer).await?
+//!     - file.write(&mut buffer).await?
+//!     - 注意数据的同步与互斥
+//! + 使用 `HashMap` 保存 url 数据和对应的计数，提高检索速率
 //! 
 //! URL 数据来源及处理： 
-//! + 由于硬盘空间有限，存不下 100 GB 的数据，因此使用 100 M 的 `urldata.csv`, 来源于 `kaggle` 的数据集：https://www.kaggle.com/teseract/urldataset
+//! + 由于硬盘空间有限，存不下 100 GB 的数据，因此使用 100 M 的 `urldata.csv`, 来源于 `kaggle` 的数据集：https://www.kaggle.com/teseract/urldataset （去掉标签）
 //! + 关于内存限制，这里只创建一个 100 M / 100 = 1 M 大小的数组 `buffer`，用于读取数据
 //! + 将 `urldata.csv` 文件分割为 100 个小文件，命名方式为 `child_0.csv` ~ `child_99.csv` 
 //! 
@@ -81,9 +81,11 @@ fn main() -> io::Result<()> {
     // 分割完， 将 1 M 大小的数组 drop 掉
     drop(buffer);
     
-    // (url, 计数)
     #[derive(Clone, Copy, Debug)]
-    struct UrlData<'url> (&'url str, usize);
+    struct UrlData<'url> (
+        // (url, 计数)
+        &'url str, usize
+    );
     impl<'url> UrlData<'url> {
         pub fn new(url: &'url str, frequency: usize) -> Self {
             UrlData (
@@ -114,9 +116,9 @@ fn main() -> io::Result<()> {
             self.1.cmp(&other.1)
         }
     }
+
     use std::io::Read;
     let mut results = Vec::new();
-    // 分别读取 100 个小文件
     for f in files {
         let mut hash: HashMap<&str, usize> = HashMap::new();
         let mut url_f = std::fs::File::open(f)?;
@@ -137,7 +139,6 @@ fn main() -> io::Result<()> {
         }).collect();
         // 创建快速选择算法用于 Top K 计算
         let mut qs = top_k::quick_select::QuickSelect::new(100);
-        // 往快速选择算法里面填充数据
         qs.add_items(url_datas);
         // 计算该小文件的 Top 100
         match qs.top_k() {
@@ -152,6 +153,8 @@ fn main() -> io::Result<()> {
             Err(TopKErr::ItemsEmpty) => {}, // do nothing
         };
     }
+
+    // 将 100 个小文件的 Top 100 整合起来进行 Top 100 计算
     let mut urls = Vec::new();
     for res in &results {
         urls.push(

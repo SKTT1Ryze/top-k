@@ -89,7 +89,7 @@ impl<I: Eq + Ord + Clone + Copy> TopK<I> for QuickSelect<I> {
             }
         }
         for item in &self.items {
-            if *item >= pivot {
+            if *item > pivot || (*item == pivot && res.len() < self.k) {
                 res.push(*item);
             }
         }
@@ -99,18 +99,18 @@ impl<I: Eq + Ord + Clone + Copy> TopK<I> for QuickSelect<I> {
 }
 
 #[test]
-fn simple_test_qucik_selection() -> Result<(), TopKErr> {
+fn simple_test_quick_selection() -> Result<(), TopKErr> {
     let mut qs = QuickSelect::<usize>::new(2);
     qs.add_items(vec![1, 2, 4, 5, 7, 0, 9, 3]);
     let res = qs.top_k()?;
     if res != vec![7, 9] && res != vec![9, 7] {
-        panic!("test qucik selection top k failed, res: {:?}.", res);
+        panic!("test quick selection top k failed, res: {:?}.", res);
     }
     qs.reset();
     qs.add_items(vec![1, 2, 4, 5, 9, 0, 9, 10]);
     let res = qs.top_k()?;
     if res != vec![10, 9, 9] && res != vec![9, 10, 9] && res != vec![9, 9, 10] {
-        panic!("test qucik selection top k failed, res: {:?}.", res);
+        panic!("test quick selection top k failed, res: {:?}.", res);
     }
     Ok(())
 }

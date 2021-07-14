@@ -13,7 +13,7 @@ fn main() -> Result<(), TopKErr> {
     let data = vec![1, 2, 3, 7, 8, 9, 0];
     let mut qs = top_k::quick_select::QuickSelect::new(2);
     
-    qs.add_times(data);
+    qs.add_items(data);
     let res = qs.top_k()?;
     
     if res != vec![8, 9] && res != vec![9, 8] {
